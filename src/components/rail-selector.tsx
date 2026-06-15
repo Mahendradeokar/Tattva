@@ -236,6 +236,7 @@ export function RailSelector({
 
   return (
     <div
+      data-rail-selector="true"
       data-orientation={orientation}
       className={cn(
         "flex items-center gap-1.5 text-[0.52rem] uppercase tracking-[0.22em] text-muted-foreground sm:gap-2.5 sm:text-[0.62rem] sm:tracking-[0.3em]",

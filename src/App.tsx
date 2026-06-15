@@ -1,23 +1,107 @@
 import { AnimatePresence, motion } from "motion/react"
-import { useMemo, useRef, useState } from "react"
+import {
+  ChevronDown,
+  Copy,
+  CopyCheck,
+  Loader2,
+  MessageCircle,
+  Triangle,
+  XCircle,
+} from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { PanInfo } from "motion/react"
+import type { WheelEvent } from "react"
 
 import { RailSelector } from "@/components/rail-selector"
+import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { scripture } from "@/content/scripture"
+import { cn } from "@/lib/utils"
 
 type TransitionState = {
   direction: 1 | -1
   kind: "chapter" | "verse"
 }
 
+const WORD_SPLIT_PATTERN =
+  /[\s,;:!?."'\u201C\u201D\u2018\u2019()[\]{}<>/\\|\u2014\u2013-]+/u
+const VERSE_MARK_PATTERN = /^[\d.\u0964\u0965]+|[\d.\u0964\u0965]+$/g
+
+function getTranslationWords(text: string) {
+  return text
+    .split(WORD_SPLIT_PATTERN)
+    .map((word) => word.replace(VERSE_MARK_PATTERN, "").trim())
+    .filter(Boolean)
+}
+
+function getInitialSelection() {
+  if (typeof window === "undefined") {
+    return {
+      chapter: scripture.chapters[0]?.number ?? 1,
+      verse: 1,
+    }
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const requestedChapter = Number(params.get("chapter"))
+  const requestedVerse = Number(params.get("verse"))
+  const chapter =
+    scripture.chapters.find((item) => item.number === requestedChapter) ??
+    scripture.chapters[0]
+
+  return {
+    chapter: chapter?.number ?? 1,
+    verse:
+      chapter?.verses.find((item) => item.number === requestedVerse)?.number ??
+      chapter?.verses[0]?.number ??
+      1,
+  }
+}
+
+async function writeToClipboard(text: string) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textArea = document.createElement("textarea")
+  textArea.value = text
+  textArea.setAttribute("readonly", "")
+  textArea.style.position = "fixed"
+  textArea.style.left = "-9999px"
+  textArea.style.top = "0"
+  document.body.appendChild(textArea)
+  textArea.focus()
+  textArea.select()
+
+  const didCopy = document.execCommand("copy")
+  document.body.removeChild(textArea)
+
+  if (!didCopy) {
+    throw new Error("Copy command failed")
+  }
+}
+
 function App() {
   const chapters = scripture.chapters
+  const initialSelection = useMemo(() => getInitialSelection(), [])
   const [mobileRailMode, setMobileRailMode] = useState<"chapter" | "verse">(
-    "chapter",
+    "verse",
   )
   const [selectedChapterNumber, setSelectedChapterNumber] = useState(
-    chapters[0]?.number ?? 1,
+    initialSelection.chapter,
   )
-  const [selectedVerseNumber, setSelectedVerseNumber] = useState(1)
+  const [selectedVerseNumber, setSelectedVerseNumber] = useState(
+    initialSelection.verse,
+  )
+  const [copyState, setCopyState] = useState<
+    "idle" | "copying" | "copied" | "error"
+  >("idle")
   const [transitionState, setTransitionState] = useState<TransitionState>({
     direction: 1,
     kind: "verse",
@@ -28,7 +112,7 @@ function App() {
     chapters.find((chapter) => chapter.number === selectedChapterNumber) ??
     chapters[0]
 
-  const verses = selectedChapter?.verses ?? []
+  const verses = useMemo(() => selectedChapter?.verses ?? [], [selectedChapter])
 
   const selectedVerse =
     verses.find((verse) => verse.number === selectedVerseNumber) ?? verses[0]
@@ -129,15 +213,191 @@ function App() {
     )
   }
 
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !selectedChapter ||
+      !selectedVerse
+    ) {
+      return
+    }
+
+    const url = new URL(window.location.href)
+    url.searchParams.set("chapter", selectedChapter.number.toString())
+    url.searchParams.set("verse", selectedVerse.number.toString())
+    window.history.replaceState(null, "", url)
+  }, [selectedChapter, selectedVerse])
+
   if (!selectedChapter || !selectedVerse) {
     return null
   }
 
   const chapterLabel = selectedChapter.number.toString().padStart(2, "0")
   const verseLabel = selectedVerse.number.toString().padStart(2, "0")
+  const verseTitle = `Chapter ${chapterLabel} . Verse ${verseLabel}`
+  const verseUrl =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}${window.location.pathname}?chapter=${selectedChapter.number}&verse=${selectedVerse.number}`
+  const verseMarkdown = `# ${scripture.title} - ${verseTitle}
+
+${selectedVerse.sanskrit}
+
+## Hindi
+${selectedVerse.hindi}
+
+## English
+${selectedVerse.english}
+
+${verseUrl}`
+  const sanskritWords = getTranslationWords(selectedVerse.sanskrit)
+  const hindiWords = getTranslationWords(selectedVerse.hindi)
+  const englishWords = getTranslationWords(selectedVerse.english)
+  const wordRows = Array.from(
+    {
+      length: Math.max(
+        sanskritWords.length,
+        hindiWords.length,
+        englishWords.length,
+      ),
+    },
+    (_, index) => ({
+      sanskrit: sanskritWords[index] ?? "-",
+      hindi: hindiWords[index] ?? "-",
+      english: englishWords[index] ?? "-",
+    }),
+  )
+
+  const copyPage = async () => {
+    if (copyState === "copying") {
+      return
+    }
+
+    setCopyState("copying")
+
+    try {
+      await writeToClipboard(verseMarkdown)
+      setCopyState("copied")
+    } catch {
+      setCopyState("error")
+    }
+
+    window.setTimeout(() => {
+      setCopyState("idle")
+    }, 1600)
+  }
+
+  const openInChatGPT = () => {
+    const prompt = `Explain this Bhagavad Gita verse:\n\n${verseMarkdown}`
+    window.open(
+      `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
+      "_blank",
+      "noopener,noreferrer",
+    )
+  }
+
+  const openFullGeetaInChatGPT = () => {
+    const prompt = `I am reading the Bhagavad Gita. Help me understand the full Geeta, starting from the overall structure, key teachings, and how Chapter ${selectedChapter.number}, Verse ${selectedVerse.number} fits into the whole text.`
+    window.open(
+      `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
+      "_blank",
+      "noopener,noreferrer",
+    )
+  }
+
+  const canScrollInDirection = (element: HTMLElement, deltaY: number) => {
+    if (element.scrollHeight <= element.clientHeight + 1) {
+      return false
+    }
+
+    if (deltaY > 0) {
+      return element.scrollTop + element.clientHeight < element.scrollHeight - 1
+    }
+
+    return element.scrollTop > 1
+  }
+
+  const handleReaderPanEnd = (
+    event: PointerEvent,
+    info: PanInfo,
+  ) => {
+    if (event.pointerType !== "touch") {
+      return
+    }
+
+    const horizontalTravel = info.offset.x
+    const verticalTravel = info.offset.y
+
+    if (
+      Math.abs(horizontalTravel) < 48 ||
+      Math.abs(horizontalTravel) <= Math.abs(verticalTravel)
+    ) {
+      return
+    }
+
+    stepVerse(horizontalTravel < 0 ? 1 : -1)
+  }
+
+  const handleReaderWheel = (event: WheelEvent<HTMLElement>) => {
+    const target = event.target
+    const currentTarget = event.currentTarget
+
+    if (
+      target instanceof HTMLElement &&
+      target.closest('[data-rail-selector="true"]')
+    ) {
+      return
+    }
+
+    if (target instanceof HTMLElement) {
+      let currentElement: HTMLElement | null = target
+
+      while (currentElement && currentElement !== currentTarget) {
+        const overflowY = window.getComputedStyle(currentElement).overflowY
+
+        if (
+          (overflowY === "auto" || overflowY === "scroll") &&
+          canScrollInDirection(currentElement, event.deltaY)
+        ) {
+          return
+        }
+
+        currentElement = currentElement.parentElement
+      }
+    }
+
+    const scrollingElement = document.scrollingElement
+
+    if (
+      scrollingElement instanceof HTMLElement &&
+      canScrollInDirection(scrollingElement, event.deltaY)
+    ) {
+      return
+    }
+
+    if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
+      return
+    }
+
+    if (Math.abs(event.deltaY) < 36) {
+      return
+    }
+
+    const now = Date.now()
+    if (now - lastWheelStepAtRef.current < 420) {
+      return
+    }
+
+    event.preventDefault()
+    lastWheelStepAtRef.current = now
+    stepVerse(event.deltaY > 0 ? 1 : -1)
+  }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main
+      onWheel={handleReaderWheel}
+      className="relative min-h-screen overflow-x-hidden bg-background text-foreground"
+    >
       <div aria-hidden="true" className="scripture-scene fixed inset-0">
         <div className="scripture-scene__image" />
         <div className="scripture-scene__wash" />
@@ -146,14 +406,84 @@ function App() {
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl items-start justify-center px-0 pt-[18dvh] pb-52 sm:px-32 sm:pt-[16vh] sm:pb-48 lg:px-40">
-        <section className="w-full">
+        <motion.section
+          onPanEnd={handleReaderPanEnd}
+          style={{ touchAction: "pan-y" }}
+          className="w-full cursor-grab active:cursor-grabbing sm:cursor-ns-resize"
+        >
           <div className="mx-auto max-w-[70ch] space-y-8 px-4 select-text sm:space-y-10 sm:px-0">
             <header className="space-y-6">
               <div className="flex flex-col gap-2 text-[0.72rem] uppercase tracking-[0.28em] text-muted-foreground/90 sm:flex-row sm:items-center">
                 <span>{scripture.title}</span>
                 <span className="hidden text-border sm:inline">/</span>
-                <span className="font-semibold tracking-[0.12em] text-foreground/95">
-                  Chapter {chapterLabel} . Verse {verseLabel}
+                <span className="flex flex-1 flex-wrap items-center justify-between gap-3">
+                  <span className="font-semibold tracking-[0.12em] text-foreground/95">
+                    {verseTitle}
+                  </span>
+
+                  <DropdownMenu>
+                    <div className="inline-flex items-center rounded-md border border-border/70 bg-background/55 normal-case shadow-sm backdrop-blur-sm">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={copyPage}
+                        disabled={copyState === "copying"}
+                        aria-live="polite"
+                        className="h-8 rounded-r-none border-r border-border/70 px-2.5 text-[0.7rem] normal-case tracking-normal"
+                      >
+                        {copyState === "copying" ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : copyState === "copied" ? (
+                          <CopyCheck className="size-3.5" />
+                        ) : copyState === "error" ? (
+                          <XCircle className="size-3.5 text-destructive" />
+                        ) : (
+                          <Copy className="size-3.5" />
+                        )}
+                        {copyState === "copying"
+                          ? "Copying"
+                          : copyState === "copied"
+                            ? "Copied"
+                            : copyState === "error"
+                              ? "Failed"
+                              : "Copy page"}
+                      </Button>
+
+                      <DropdownMenuTrigger
+                        type="button"
+                        aria-label="Open copy menu"
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                          "h-8 w-8 rounded-l-none",
+                        )}
+                      >
+                        <ChevronDown className="size-3.5" />
+                      </DropdownMenuTrigger>
+                    </div>
+
+                    <DropdownMenuContent align="end" className="w-72">
+                      <DropdownMenuItem onSelect={openInChatGPT}>
+                        <MessageCircle className="mr-3 size-4 shrink-0 text-foreground/80" />
+                        <div className="flex flex-col gap-0.5 normal-case tracking-normal">
+                          <span className="font-medium">Open verse in ChatGPT</span>
+                          <span className="text-xs text-muted-foreground">
+                            Ask questions about this verse
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem onSelect={openFullGeetaInChatGPT}>
+                        <MessageCircle className="mr-3 size-4 shrink-0 text-foreground/80" />
+                        <div className="flex flex-col gap-0.5 normal-case tracking-normal">
+                          <span className="font-medium">Open full Geeta in ChatGPT</span>
+                          <span className="text-xs text-muted-foreground">
+                            Ask questions about the whole Geeta
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </span>
               </div>
 
@@ -163,42 +493,6 @@ function App() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.article
                 key={`${selectedChapter.number}-${selectedVerse.number}`}
-                onPanEnd={(event, info) => {
-                  if (event.pointerType !== "touch") {
-                    return
-                  }
-
-                  const horizontalTravel = info.offset.x
-                  const verticalTravel = info.offset.y
-
-                  if (
-                    Math.abs(horizontalTravel) < 48 ||
-                    Math.abs(horizontalTravel) <= Math.abs(verticalTravel)
-                  ) {
-                    return
-                  }
-
-                  stepVerse(horizontalTravel < 0 ? 1 : -1)
-                }}
-                onWheel={(event) => {
-                  if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
-                    return
-                  }
-
-                  if (Math.abs(event.deltaY) < 36) {
-                    return
-                  }
-
-                  const now = Date.now()
-                  if (now - lastWheelStepAtRef.current < 420) {
-                    return
-                  }
-
-                  event.preventDefault()
-                  lastWheelStepAtRef.current = now
-                  stepVerse(event.deltaY > 0 ? 1 : -1)
-                }}
-                style={{ touchAction: "pan-y" }}
                 initial={{
                   opacity: 0,
                   y: transitionState.direction > 0 ? 18 : -18,
@@ -212,7 +506,7 @@ function App() {
                   duration: transitionState.kind === "chapter" ? 0.34 : 0.24,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="space-y-1"
+                className="space-y-1 cursor-text"
               >
                 <div className="pb-4 sm:pb-5">
                   <h1 className="font-devanagari text-xl leading-loose text-foreground/95 sm:text-2xl lg:text-4xl lg:leading-[1.55]">
@@ -229,11 +523,57 @@ function App() {
                   <p className="text-sm leading-8 text-foreground/78 sm:text-base sm:leading-9">
                     {selectedVerse.english}
                   </p>
+
+                  <details className="group border-y border-border/80 py-3">
+                    <summary className="flex list-none items-center gap-2 text-left text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-foreground/78 transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+                      <Triangle
+                        aria-hidden="true"
+                        className="size-3 shrink-0 rotate-90 fill-current text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+                      />
+                      <span>Word Meanings</span>
+                    </summary>
+
+                    <div className="overflow-x-auto pt-5">
+                      <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-border/80 text-[0.58rem] uppercase tracking-[0.18em] text-muted-foreground">
+                            <th className="w-1/3 py-2 pr-4 font-medium">
+                              Sanskrit Word
+                            </th>
+                            <th className="w-1/3 px-4 py-2 font-medium">
+                              Hindi Meaning
+                            </th>
+                            <th className="w-1/3 py-2 pl-4 font-medium">
+                              English Meaning
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {wordRows.map((row, index) => (
+                            <tr
+                              key={`${row.sanskrit}-${row.hindi}-${row.english}-${index}`}
+                              className="border-b border-border/45 last:border-b-0"
+                            >
+                              <td className="font-devanagari py-2.5 pr-4 align-top leading-7 text-foreground/86">
+                                {row.sanskrit}
+                              </td>
+                              <td className="font-devanagari px-4 py-2.5 align-top leading-7 text-foreground/82">
+                                {row.hindi}
+                              </td>
+                              <td className="py-2.5 pl-4 align-top leading-7 text-foreground/78">
+                                {row.english}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
                 </div>
               </motion.article>
             </AnimatePresence>
           </div>
-        </section>
+        </motion.section>
       </div>
 
       <RailSelector
@@ -260,30 +600,6 @@ function App() {
             <button
               type="button"
               onClick={() => {
-                setMobileRailMode("chapter")
-              }}
-              className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
-                mobileRailMode === "chapter"
-                  ? "text-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {mobileRailMode === "chapter" ? (
-                <motion.span
-                  layoutId="mobile-rail-tab"
-                  className="absolute inset-0 rounded-lg bg-background shadow-sm"
-                  transition={{
-                    type: "spring",
-                    stiffness: 420,
-                    damping: 34,
-                  }}
-                />
-              ) : null}
-              <span className="relative z-10">Chapter</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
                 setMobileRailMode("verse")
               }}
               className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
@@ -304,6 +620,30 @@ function App() {
                 />
               ) : null}
               <span className="relative z-10">Verse</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileRailMode("chapter")
+              }}
+              className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
+                mobileRailMode === "chapter"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {mobileRailMode === "chapter" ? (
+                <motion.span
+                  layoutId="mobile-rail-tab"
+                  className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                  transition={{
+                    type: "spring",
+                    stiffness: 420,
+                    damping: 34,
+                  }}
+                />
+              ) : null}
+              <span className="relative z-10">Chapter</span>
             </button>
           </div>
 
