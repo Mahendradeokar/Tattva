@@ -675,13 +675,13 @@ Help me understand the full Geeta, starting from the overall structure and key t
             </a>
 
             <a
-              href="/.llm.txt"
+              href="/llms.txt"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-8 items-center gap-2 rounded-md text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <FileText className="size-3.5 shrink-0" />
-              <span>.llm.txt</span>
+              <span>llms.txt</span>
             </a>
           </nav>
         </div>
