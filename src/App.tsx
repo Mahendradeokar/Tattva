@@ -3,6 +3,8 @@ import {
   ChevronDown,
   Copy,
   CopyCheck,
+  ExternalLink,
+  FileText,
   Loader2,
   MessageCircle,
   XCircle,
@@ -410,233 +412,276 @@ ${verseUrl}`
   }
 
   return (
-    <main
-      onWheel={handleReaderWheel}
-      className="relative min-h-screen overflow-x-hidden bg-background text-foreground"
-    >
-      <div aria-hidden="true" className="scripture-scene fixed inset-0">
-        <div className="scripture-scene__image" />
-        <div className="scripture-scene__wash" />
-        <div className="scripture-scene__glow" />
-        <div className="scripture-scene__grain" />
-      </div>
-
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl items-start justify-center px-0 pt-[18dvh] pb-52 sm:px-32 sm:pt-[16vh] sm:pb-48 lg:px-40">
-        <motion.section
-          onPanEnd={handleReaderPanEnd}
-          style={{ touchAction: "pan-y" }}
-          className="w-full cursor-grab active:cursor-grabbing sm:cursor-ns-resize"
-        >
-          <div className="mx-auto max-w-[70ch] space-y-8 px-4 select-text sm:space-y-10 sm:px-0">
-            <header className="space-y-6">
-              <div className="flex flex-col gap-2 text-[0.72rem] uppercase tracking-[0.28em] text-muted-foreground/90 sm:flex-row sm:items-center">
-                <span>{scripture.title}</span>
-                <span className="hidden text-border sm:inline">/</span>
-                <span className="flex flex-1 flex-wrap items-center justify-between gap-3">
-                  <span className="font-semibold tracking-[0.12em] text-foreground/95">
-                    {verseTitle}
-                  </span>
-
-                  <DropdownMenu>
-                    <div className="inline-flex items-center rounded-md border border-border/70 bg-background/55 normal-case shadow-sm backdrop-blur-sm">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={copyPage}
-                        disabled={copyState === "copying"}
-                        aria-live="polite"
-                        className="h-8 rounded-r-none border-r border-border/70 px-2.5 text-[0.7rem] normal-case tracking-normal"
-                      >
-                        {copyState === "copying" ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : copyState === "copied" ? (
-                          <CopyCheck className="size-3.5" />
-                        ) : copyState === "error" ? (
-                          <XCircle className="size-3.5 text-destructive" />
-                        ) : (
-                          <Copy className="size-3.5" />
-                        )}
-                        {copyState === "copying"
-                          ? "Copying"
-                          : copyState === "copied"
-                            ? "Copied"
-                            : copyState === "error"
-                              ? "Failed"
-                              : "Copy page"}
-                      </Button>
-
-                      <DropdownMenuTrigger
-                        type="button"
-                        aria-label="Open copy menu"
-                        className={cn(
-                          buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                          "h-8 w-8 rounded-l-none",
-                        )}
-                      >
-                        <ChevronDown className="size-3.5" />
-                      </DropdownMenuTrigger>
-                    </div>
-
-                    <DropdownMenuContent align="end" className="w-72">
-                      <DropdownMenuItem onSelect={openInChatGPT}>
-                        <MessageCircle className="mr-3 size-4 shrink-0 text-foreground/80" />
-                        <div className="flex flex-col gap-0.5 normal-case tracking-normal">
-                          <span className="font-medium">Open verse in ChatGPT</span>
-                          <span className="text-xs text-muted-foreground">
-                            Ask questions about this verse
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem onSelect={openFullGeetaInChatGPT}>
-                        <MessageCircle className="mr-3 size-4 shrink-0 text-foreground/80" />
-                        <div className="flex flex-col gap-0.5 normal-case tracking-normal">
-                          <span className="font-medium">Open full Geeta in ChatGPT</span>
-                          <span className="text-xs text-muted-foreground">
-                            Ask questions about the whole Geeta
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </span>
-              </div>
-
-              <div className="h-px bg-border/95" />
-            </header>
-
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.article
-                key={`${selectedChapter.number}-${selectedVerse.number}`}
-                initial={{
-                  opacity: 0,
-                  y: transitionState.direction > 0 ? 18 : -18,
-                }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{
-                  opacity: 0,
-                  y: transitionState.direction > 0 ? -14 : 14,
-                }}
-                transition={{
-                  duration: transitionState.kind === "chapter" ? 0.34 : 0.24,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className="space-y-1 cursor-text"
-              >
-                <div className="pb-4 sm:pb-5">
-                  <h1 className="font-devanagari text-xl leading-loose text-foreground/95 sm:text-2xl lg:text-4xl lg:leading-[1.55]">
-                    {selectedVerse.sanskrit}
-                  </h1>
-                  <div className="h-px bg-border/95" />
-                </div>
-
-                <div className="space-y-5">
-                  <p className="font-devanagari text-base leading-9 text-foreground/88 sm:text-lg sm:leading-10">
-                    {selectedVerse.hindi}
-                  </p>
-
-                  <p className="text-sm leading-8 text-foreground/78 sm:text-base sm:leading-9">
-                    {selectedVerse.english}
-                  </p>
-                </div>
-              </motion.article>
-            </AnimatePresence>
-          </div>
-        </motion.section>
-      </div>
-
-      <RailSelector
-        label="Chapter"
-        orientation="vertical"
-        items={chapterItems}
-        selectedValue={selectedChapter.number}
-        onSelect={handleChapterSelect}
-        className="fixed top-1/2 right-1.5 z-20 hidden -translate-y-1/2 sm:flex sm:right-6 lg:right-8"
-      />
-
-      <RailSelector
-        label="Verse"
-        orientation="horizontal"
-        items={verseItems}
-        selectedValue={selectedVerse.number}
-        onSelect={handleVerseSelect}
-        className="fixed bottom-3 left-1/2 z-20 hidden -translate-x-1/2 sm:flex sm:bottom-8"
-      />
-
-      <div className="fixed inset-x-0 bottom-3 z-20 px-3 sm:hidden">
-        <div className="mx-auto flex max-w-sm flex-col gap-2 rounded-2xl border border-border/50 bg-background/70 p-2 backdrop-blur-md">
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setMobileRailMode("verse")
-              }}
-              className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
-                mobileRailMode === "verse"
-                  ? "text-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {mobileRailMode === "verse" ? (
-                <motion.span
-                  layoutId="mobile-rail-tab"
-                  className="absolute inset-0 rounded-lg bg-background shadow-sm"
-                  transition={{
-                    type: "spring",
-                    stiffness: 420,
-                    damping: 34,
-                  }}
-                />
-              ) : null}
-              <span className="relative z-10">Verse</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileRailMode("chapter")
-              }}
-              className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
-                mobileRailMode === "chapter"
-                  ? "text-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {mobileRailMode === "chapter" ? (
-                <motion.span
-                  layoutId="mobile-rail-tab"
-                  className="absolute inset-0 rounded-lg bg-background shadow-sm"
-                  transition={{
-                    type: "spring",
-                    stiffness: 420,
-                    damping: 34,
-                  }}
-                />
-              ) : null}
-              <span className="relative z-10">Chapter</span>
-            </button>
-          </div>
-
-          {mobileRailMode === "chapter" ? (
-            <RailSelector
-              label="Chapter"
-              orientation="horizontal"
-              items={mobileChapterItems}
-              selectedValue={selectedChapter.number}
-              onSelect={handleChapterSelect}
-            />
-          ) : (
-            <RailSelector
-              label="Verse"
-              orientation="horizontal"
-              items={verseItems}
-              selectedValue={selectedVerse.number}
-              onSelect={handleVerseSelect}
-            />
-          )}
+    <div className="min-h-screen bg-background text-foreground">
+      <section
+        onWheel={handleReaderWheel}
+        className="relative h-[100dvh] overflow-hidden"
+      >
+        <div aria-hidden="true" className="scripture-scene absolute inset-0">
+          <div className="scripture-scene__image" />
+          <div className="scripture-scene__wash" />
+          <div className="scripture-scene__glow" />
+          <div className="scripture-scene__grain" />
         </div>
-      </div>
-    </main>
+
+        <main className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-start justify-center overflow-y-auto overflow-x-hidden px-0 pt-[18dvh] pb-[calc(13rem+env(safe-area-inset-bottom))] sm:px-32 sm:pt-[16vh] sm:pb-[calc(12rem+env(safe-area-inset-bottom))] lg:px-40">
+          <motion.section
+            onPanEnd={handleReaderPanEnd}
+            style={{ touchAction: "pan-y" }}
+            className="w-full cursor-grab active:cursor-grabbing sm:cursor-ns-resize"
+          >
+            <div className="mx-auto max-w-[70ch] space-y-8 px-4 select-text sm:space-y-10 sm:px-0">
+              <header className="space-y-6">
+                <div className="flex flex-col gap-2 text-[0.72rem] uppercase tracking-[0.28em] text-muted-foreground/90 sm:flex-row sm:items-center">
+                  <span>{scripture.title}</span>
+                  <span className="hidden text-border sm:inline">/</span>
+                  <span className="flex flex-1 flex-wrap items-center justify-between gap-3">
+                    <span className="font-semibold tracking-[0.12em] text-foreground/95">
+                      {verseTitle}
+                    </span>
+
+                    <DropdownMenu>
+                      <div className="inline-flex items-center rounded-md border border-border/70 bg-background/55 normal-case shadow-sm backdrop-blur-sm">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={copyPage}
+                          disabled={copyState === "copying"}
+                          aria-live="polite"
+                          className="h-8 rounded-r-none border-r border-border/70 px-2.5 text-[0.7rem] normal-case tracking-normal"
+                        >
+                          {copyState === "copying" ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : copyState === "copied" ? (
+                            <CopyCheck className="size-3.5" />
+                          ) : copyState === "error" ? (
+                            <XCircle className="size-3.5 text-destructive" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
+                          {copyState === "copying"
+                            ? "Copying"
+                            : copyState === "copied"
+                              ? "Copied"
+                              : copyState === "error"
+                                ? "Failed"
+                                : "Copy page"}
+                        </Button>
+
+                        <DropdownMenuTrigger
+                          type="button"
+                          aria-label="Open copy menu"
+                          className={cn(
+                            buttonVariants({
+                              variant: "ghost",
+                              size: "icon-sm",
+                            }),
+                            "h-8 w-8 rounded-l-none",
+                          )}
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </DropdownMenuTrigger>
+                      </div>
+
+                      <DropdownMenuContent align="end" className="w-72">
+                        <DropdownMenuItem onSelect={openInChatGPT}>
+                          <MessageCircle className="mr-3 size-4 shrink-0 text-foreground/80" />
+                          <div className="flex flex-col gap-0.5 normal-case tracking-normal">
+                            <span className="font-medium">
+                              Open verse in ChatGPT
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Ask questions about this verse
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem onSelect={openFullGeetaInChatGPT}>
+                          <MessageCircle className="mr-3 size-4 shrink-0 text-foreground/80" />
+                          <div className="flex flex-col gap-0.5 normal-case tracking-normal">
+                            <span className="font-medium">
+                              Open full Geeta in ChatGPT
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Ask questions about the whole Geeta
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </span>
+                </div>
+
+                <div className="h-px bg-border/95" />
+              </header>
+
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.article
+                  key={`${selectedChapter.number}-${selectedVerse.number}`}
+                  initial={{
+                    opacity: 0,
+                    y: transitionState.direction > 0 ? 18 : -18,
+                  }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{
+                    opacity: 0,
+                    y: transitionState.direction > 0 ? -14 : 14,
+                  }}
+                  transition={{
+                    duration: transitionState.kind === "chapter" ? 0.34 : 0.24,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="space-y-1 cursor-text"
+                >
+                  <div className="pb-4 sm:pb-5">
+                    <h1 className="font-devanagari text-xl leading-loose text-foreground/95 sm:text-2xl lg:text-4xl lg:leading-[1.55]">
+                      {selectedVerse.sanskrit}
+                    </h1>
+                    <div className="h-px bg-border/95" />
+                  </div>
+
+                  <div className="space-y-5">
+                    <p className="font-devanagari text-base leading-9 text-foreground/88 sm:text-lg sm:leading-10">
+                      {selectedVerse.hindi}
+                    </p>
+
+                    <p className="text-sm leading-8 text-foreground/78 sm:text-base sm:leading-9">
+                      {selectedVerse.english}
+                    </p>
+                  </div>
+                </motion.article>
+              </AnimatePresence>
+            </div>
+          </motion.section>
+        </main>
+
+        <RailSelector
+          label="Chapter"
+          orientation="vertical"
+          items={chapterItems}
+          selectedValue={selectedChapter.number}
+          onSelect={handleChapterSelect}
+          className="absolute top-1/2 right-1.5 z-20 hidden -translate-y-1/2 sm:flex sm:right-6 lg:right-8"
+        />
+
+        <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 z-20 hidden -translate-x-1/2 sm:block">
+          <RailSelector
+            label="Verse"
+            orientation="horizontal"
+            items={verseItems}
+            selectedValue={selectedVerse.number}
+            onSelect={handleVerseSelect}
+          />
+        </div>
+
+        <div className="absolute inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 px-3 sm:hidden">
+          <div className="mx-auto flex max-w-sm flex-col gap-2 rounded-2xl border border-border/50 bg-background/70 p-2 backdrop-blur-md">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileRailMode("verse")
+                }}
+                className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
+                  mobileRailMode === "verse"
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {mobileRailMode === "verse" ? (
+                  <motion.span
+                    layoutId="mobile-rail-tab"
+                    className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                    transition={{
+                      type: "spring",
+                      stiffness: 420,
+                      damping: 34,
+                    }}
+                  />
+                ) : null}
+                <span className="relative z-10">Verse</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileRailMode("chapter")
+                }}
+                className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
+                  mobileRailMode === "chapter"
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {mobileRailMode === "chapter" ? (
+                  <motion.span
+                    layoutId="mobile-rail-tab"
+                    className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                    transition={{
+                      type: "spring",
+                      stiffness: 420,
+                      damping: 34,
+                    }}
+                  />
+                ) : null}
+                <span className="relative z-10">Chapter</span>
+              </button>
+            </div>
+
+            {mobileRailMode === "chapter" ? (
+              <RailSelector
+                label="Chapter"
+                orientation="horizontal"
+                items={mobileChapterItems}
+                selectedValue={selectedChapter.number}
+                onSelect={handleChapterSelect}
+              />
+            ) : (
+              <RailSelector
+                label="Verse"
+                orientation="horizontal"
+                items={verseItems}
+                selectedValue={selectedVerse.number}
+                onSelect={handleVerseSelect}
+              />
+            )}
+          </div>
+        </div>
+      </section>
+
+      <footer className="relative z-10 border-t border-border/80 bg-background/95 px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-8 sm:py-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-center text-xs text-muted-foreground sm:justify-between sm:gap-x-4 sm:gap-y-2 sm:text-left">
+          <p className="min-h-8 content-center text-foreground/60">
+            © 2026 Mahendra Devkar. All rights reserved.
+          </p>
+
+          <nav
+            aria-label="Footer links"
+            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-foreground/72 sm:justify-end sm:gap-x-4 sm:gap-y-2"
+          >
+            <a
+              href="https://mahendradevkar.xyz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-8 items-center gap-2 rounded-md text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <ExternalLink className="size-3.5 shrink-0" />
+              <span>Built by Mahendra Devkar</span>
+            </a>
+
+            <a
+              href="/.llm.txt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-8 items-center gap-2 rounded-md text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <FileText className="size-3.5 shrink-0" />
+              <span>.llm.txt</span>
+            </a>
+          </nav>
+        </div>
+      </footer>
+    </div>
   )
 }
 

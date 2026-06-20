@@ -1,0 +1,14 @@
+# Bhagavad Gita Reader
+
+This site presents Bhagavad Gita verses with Sanskrit text and Hindi and English readings.
+
+Primary interactions:
+- Select chapters and verses using the rail controls.
+- Copy the current verse page.
+- Open the current verse or full Geeta context in ChatGPT.
+
+Canonical pages are represented with query parameters:
+- `?chapter=1&verse=1`
+
+Built by Mahendra Devkar:
+https://mahendradevkar.xyz/
