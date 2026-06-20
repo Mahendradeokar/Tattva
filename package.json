@@ -14,11 +14,13 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@openrouter/ai-sdk-provider": "2.9.1",
+    "@posthog/react": "^1.10.2",
     "ai": "6.0.208",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "motion": "^12.40.0",
+    "posthog-js": "^1.391.2",
     "radix-ui": "^1.4.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -40,9 +42,9 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
     "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "tsx": "^4.22.4",
     "vite": "^5.4.1"
   }
 }

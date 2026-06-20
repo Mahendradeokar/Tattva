@@ -10,6 +10,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { PanInfo } from "motion/react"
 import type { WheelEvent } from "react"
+import { usePostHog } from "@posthog/react"
 
 import { RailSelector } from "@/components/rail-selector"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -76,6 +77,7 @@ async function writeToClipboard(text: string) {
 }
 
 function App() {
+  const posthog = usePostHog()
   const chapters = scripture.chapters
   const initialSelection = useMemo(() => getInitialSelection(), [])
   const [mobileRailMode, setMobileRailMode] = useState<"chapter" | "verse">(
@@ -138,6 +140,11 @@ function App() {
       return
     }
 
+    posthog?.capture('chapter_selected', {
+      chapter_number: chapterNumber,
+      previous_chapter_number: selectedChapterNumber,
+    })
+
     setTransitionState({
       direction: chapterNumber > selectedChapterNumber ? 1 : -1,
       kind: "chapter",
@@ -150,6 +157,12 @@ function App() {
     if (verseNumber === selectedVerseNumber) {
       return
     }
+
+    posthog?.capture('verse_selected', {
+      chapter_number: selectedChapterNumber,
+      verse_number: verseNumber,
+      previous_verse_number: selectedVerseNumber,
+    })
 
     setTransitionState({
       direction: verseNumber > selectedVerseNumber ? 1 : -1,
@@ -179,6 +192,13 @@ function App() {
     const nextVerseIndex = verseIndex + delta
 
     if (nextVerseIndex >= 0 && nextVerseIndex < currentChapter.verses.length) {
+      posthog?.capture('verse_navigated', {
+        chapter_number: selectedChapterNumber,
+        verse_number: currentChapter.verses[nextVerseIndex].number,
+        previous_verse_number: selectedVerseNumber,
+        direction: delta > 0 ? 'forward' : 'backward',
+        cross_chapter: false,
+      })
       handleVerseSelect(currentChapter.verses[nextVerseIndex].number)
       return
     }
@@ -189,16 +209,26 @@ function App() {
       return
     }
 
+    const nextVerseNumber =
+      delta > 0
+        ? nextChapter.verses[0].number
+        : nextChapter.verses[nextChapter.verses.length - 1]?.number ?? 1
+
+    posthog?.capture('verse_navigated', {
+      chapter_number: nextChapter.number,
+      verse_number: nextVerseNumber,
+      previous_chapter_number: selectedChapterNumber,
+      previous_verse_number: selectedVerseNumber,
+      direction: delta > 0 ? 'forward' : 'backward',
+      cross_chapter: true,
+    })
+
     setTransitionState({
       direction: delta,
       kind: "chapter",
     })
     setSelectedChapterNumber(nextChapter.number)
-    setSelectedVerseNumber(
-      delta > 0
-        ? nextChapter.verses[0].number
-        : nextChapter.verses[nextChapter.verses.length - 1]?.number ?? 1,
-    )
+    setSelectedVerseNumber(nextVerseNumber)
   }
 
   useEffect(() => {
@@ -248,8 +278,16 @@ ${verseUrl}`
     try {
       await writeToClipboard(verseMarkdown)
       setCopyState("copied")
-    } catch {
+      posthog?.capture('verse_copied', {
+        chapter_number: selectedChapter.number,
+        verse_number: selectedVerse.number,
+      })
+    } catch (err) {
       setCopyState("error")
+      posthog?.captureException(err, {
+        chapter_number: selectedChapter.number,
+        verse_number: selectedVerse.number,
+      })
     }
 
     window.setTimeout(() => {
@@ -258,6 +296,10 @@ ${verseUrl}`
   }
 
   const openInChatGPT = () => {
+    posthog?.capture('verse_opened_in_chatgpt', {
+      chapter_number: selectedChapter.number,
+      verse_number: selectedVerse.number,
+    })
     const prompt = `Explain this Bhagavad Gita verse:\n\n${verseMarkdown}`
     window.open(
       `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
@@ -267,6 +309,10 @@ ${verseUrl}`
   }
 
   const openFullGeetaInChatGPT = () => {
+    posthog?.capture('full_geeta_opened_in_chatgpt', {
+      chapter_number: selectedChapter.number,
+      verse_number: selectedVerse.number,
+    })
     const prompt = `I am reading the Bhagavad Gita. Help me understand the full Geeta, starting from the overall structure, key teachings, and how Chapter ${selectedChapter.number}, Verse ${selectedVerse.number} fits into the whole text.`
     window.open(
       `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
