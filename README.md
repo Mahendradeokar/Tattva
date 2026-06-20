@@ -1,50 +1,52 @@
-# React + TypeScript + Vite
+# Geeta Project
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small effort to present the Bhagavad Gita as it is written in Sanskrit, with simple modern Hindi and English translations for easier reading.
 
-Currently, two official plugins are available:
+## Source
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The Sanskrit text is obtained from the Gita Supersite by IIT Kanpur:
 
-## Expanding the ESLint configuration
+https://www.gitasupersite.iitk.ac.in/
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Gita Supersite began as a research and development initiative at IIT Kanpur under the Department of Computer Science & Engineering to digitize, analyze, and map Indian philosophical texts.
 
-- Configure the top-level `parserOptions` property like this:
+## Translations
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+Hindi and English translations are generated with an LLM. The goal is not commentary, but clear, direct, modern-language meaning alongside the original Sanskrit.
+
+The generated text is also written to `public/llms.txt` for LLM-friendly reading and indexing.
+
+## Run The App
+
+```bash
+pnpm install
+pnpm dev
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Open the local URL printed by Vite.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+## Scripts
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+Scrape Sanskrit/source content:
+
+```bash
+pnpm scrape:scripture
+```
+
+Generate translations with OpenRouter:
+
+```cmd
+set OPENROUTER_API_KEY=your_api_key_here && pnpm translate:verses
+```
+
+Force regenerate existing translations:
+
+```cmd
+set OPENROUTER_API_KEY=your_api_key_here && set FORCE_TRANSLATE=1 && pnpm translate:verses
+```
+
+Build for production:
+
+```bash
+pnpm build
 ```
