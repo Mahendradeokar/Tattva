@@ -5,7 +5,6 @@ import {
   CopyCheck,
   Loader2,
   MessageCircle,
-  Triangle,
   XCircle,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -26,17 +25,6 @@ import { cn } from "@/lib/utils"
 type TransitionState = {
   direction: 1 | -1
   kind: "chapter" | "verse"
-}
-
-const WORD_SPLIT_PATTERN =
-  /[\s,;:!?."'\u201C\u201D\u2018\u2019()[\]{}<>/\\|\u2014\u2013-]+/u
-const VERSE_MARK_PATTERN = /^[\d.\u0964\u0965]+|[\d.\u0964\u0965]+$/g
-
-function getTranslationWords(text: string) {
-  return text
-    .split(WORD_SPLIT_PATTERN)
-    .map((word) => word.replace(VERSE_MARK_PATTERN, "").trim())
-    .filter(Boolean)
 }
 
 function getInitialSelection() {
@@ -250,24 +238,6 @@ ${selectedVerse.hindi}
 ${selectedVerse.english}
 
 ${verseUrl}`
-  const sanskritWords = getTranslationWords(selectedVerse.sanskrit)
-  const hindiWords = getTranslationWords(selectedVerse.hindi)
-  const englishWords = getTranslationWords(selectedVerse.english)
-  const wordRows = Array.from(
-    {
-      length: Math.max(
-        sanskritWords.length,
-        hindiWords.length,
-        englishWords.length,
-      ),
-    },
-    (_, index) => ({
-      sanskrit: sanskritWords[index] ?? "-",
-      hindi: hindiWords[index] ?? "-",
-      english: englishWords[index] ?? "-",
-    }),
-  )
-
   const copyPage = async () => {
     if (copyState === "copying") {
       return
@@ -523,52 +493,6 @@ ${verseUrl}`
                   <p className="text-sm leading-8 text-foreground/78 sm:text-base sm:leading-9">
                     {selectedVerse.english}
                   </p>
-
-                  <details className="group border-y border-border/80 py-3">
-                    <summary className="flex list-none items-center gap-2 text-left text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-foreground/78 transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
-                      <Triangle
-                        aria-hidden="true"
-                        className="size-3 shrink-0 rotate-90 fill-current text-muted-foreground transition-transform duration-200 group-open:rotate-180"
-                      />
-                      <span>Word Meanings</span>
-                    </summary>
-
-                    <div className="overflow-x-auto pt-5">
-                      <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
-                        <thead>
-                          <tr className="border-b border-border/80 text-[0.58rem] uppercase tracking-[0.18em] text-muted-foreground">
-                            <th className="w-1/3 py-2 pr-4 font-medium">
-                              Sanskrit Word
-                            </th>
-                            <th className="w-1/3 px-4 py-2 font-medium">
-                              Hindi Meaning
-                            </th>
-                            <th className="w-1/3 py-2 pl-4 font-medium">
-                              English Meaning
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {wordRows.map((row, index) => (
-                            <tr
-                              key={`${row.sanskrit}-${row.hindi}-${row.english}-${index}`}
-                              className="border-b border-border/45 last:border-b-0"
-                            >
-                              <td className="font-devanagari py-2.5 pr-4 align-top leading-7 text-foreground/86">
-                                {row.sanskrit}
-                              </td>
-                              <td className="font-devanagari px-4 py-2.5 align-top leading-7 text-foreground/82">
-                                {row.hindi}
-                              </td>
-                              <td className="py-2.5 pl-4 align-top leading-7 text-foreground/78">
-                                {row.english}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </details>
                 </div>
               </motion.article>
             </AnimatePresence>
