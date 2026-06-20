@@ -1,0 +1,24 @@
+{
+  "name": "Geeta for Everyone",
+  "short_name": "Geeta",
+  "description": "Read the Bhagavad Gita with chapter and verse navigation, Sanskrit, Hindi, and English translations.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffaf0",
+  "theme_color": "#f4b942",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
