@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion } from "motion/react";
 import {
   ChevronDown,
   Copy,
@@ -8,42 +8,42 @@ import {
   Loader2,
   MessageCircle,
   XCircle,
-} from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
-import type { PanInfo } from "motion/react"
-import type { WheelEvent } from "react"
-import { usePostHog } from "@posthog/react"
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { PanInfo } from "motion/react";
+import type { WheelEvent } from "react";
+import { usePostHog } from "@posthog/react";
 
-import { RailSelector } from "@/components/rail-selector"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { RailSelector } from "@/components/rail-selector";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { scripture } from "@/content/scripture"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dropdown-menu";
+import { scripture } from "@/content/scripture";
+import { cn } from "@/lib/utils";
 
 type TransitionState = {
-  direction: 1 | -1
-  kind: "chapter" | "verse"
-}
+  direction: 1 | -1;
+  kind: "chapter" | "verse";
+};
 
 function getInitialSelection() {
   if (typeof window === "undefined") {
     return {
       chapter: scripture.chapters[0]?.number ?? 1,
       verse: 1,
-    }
+    };
   }
 
-  const params = new URLSearchParams(window.location.search)
-  const requestedChapter = Number(params.get("chapter"))
-  const requestedVerse = Number(params.get("verse"))
+  const params = new URLSearchParams(window.location.search);
+  const requestedChapter = Number(params.get("chapter"));
+  const requestedVerse = Number(params.get("verse"));
   const chapter =
     scripture.chapters.find((item) => item.number === requestedChapter) ??
-    scripture.chapters[0]
+    scripture.chapters[0];
 
   return {
     chapter: chapter?.number ?? 1,
@@ -51,63 +51,66 @@ function getInitialSelection() {
       chapter?.verses.find((item) => item.number === requestedVerse)?.number ??
       chapter?.verses[0]?.number ??
       1,
-  }
+  };
 }
 
 async function writeToClipboard(text: string) {
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text)
-    return
+    await navigator.clipboard.writeText(text);
+    return;
   }
 
-  const textArea = document.createElement("textarea")
-  textArea.value = text
-  textArea.setAttribute("readonly", "")
-  textArea.style.position = "fixed"
-  textArea.style.left = "-9999px"
-  textArea.style.top = "0"
-  document.body.appendChild(textArea)
-  textArea.focus()
-  textArea.select()
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  textArea.style.top = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
 
-  const didCopy = document.execCommand("copy")
-  document.body.removeChild(textArea)
+  const didCopy = document.execCommand("copy");
+  document.body.removeChild(textArea);
 
   if (!didCopy) {
-    throw new Error("Copy command failed")
+    throw new Error("Copy command failed");
   }
 }
 
 function App() {
-  const posthog = usePostHog()
-  const chapters = scripture.chapters
-  const initialSelection = useMemo(() => getInitialSelection(), [])
+  const posthog = usePostHog();
+  const chapters = scripture.chapters;
+  const initialSelection = useMemo(() => getInitialSelection(), []);
   const [mobileRailMode, setMobileRailMode] = useState<"chapter" | "verse">(
     "verse",
-  )
+  );
   const [selectedChapterNumber, setSelectedChapterNumber] = useState(
     initialSelection.chapter,
-  )
+  );
   const [selectedVerseNumber, setSelectedVerseNumber] = useState(
     initialSelection.verse,
-  )
+  );
   const [copyState, setCopyState] = useState<
     "idle" | "copying" | "copied" | "error"
-  >("idle")
+  >("idle");
   const [transitionState, setTransitionState] = useState<TransitionState>({
     direction: 1,
     kind: "verse",
-  })
-  const lastWheelStepAtRef = useRef(0)
+  });
+  const lastWheelStepAtRef = useRef(0);
 
   const selectedChapter =
     chapters.find((chapter) => chapter.number === selectedChapterNumber) ??
-    chapters[0]
+    chapters[0];
 
-  const verses = useMemo(() => selectedChapter?.verses ?? [], [selectedChapter])
+  const verses = useMemo(
+    () => selectedChapter?.verses ?? [],
+    [selectedChapter],
+  );
 
   const selectedVerse =
-    verses.find((verse) => verse.number === selectedVerseNumber) ?? verses[0]
+    verses.find((verse) => verse.number === selectedVerseNumber) ?? verses[0];
 
   const chapterItems = useMemo(
     () =>
@@ -117,7 +120,7 @@ function App() {
         displayLabel: `Chapter ${chapter.number.toString().padStart(2, "0")}`,
       })),
     [chapters],
-  )
+  );
 
   const verseItems = useMemo(
     () =>
@@ -126,7 +129,7 @@ function App() {
         label: verse.number.toString().padStart(2, "0"),
       })),
     [verses],
-  )
+  );
 
   const mobileChapterItems = useMemo(
     () =>
@@ -135,135 +138,131 @@ function App() {
         label: chapter.number.toString().padStart(2, "0"),
       })),
     [chapters],
-  )
+  );
 
   const handleChapterSelect = (chapterNumber: number) => {
     if (chapterNumber === selectedChapterNumber) {
-      return
+      return;
     }
 
-    posthog?.capture('chapter_selected', {
+    posthog?.capture("chapter_selected", {
       chapter_number: chapterNumber,
       previous_chapter_number: selectedChapterNumber,
-    })
+    });
 
     setTransitionState({
       direction: chapterNumber > selectedChapterNumber ? 1 : -1,
       kind: "chapter",
-    })
-    setSelectedChapterNumber(chapterNumber)
-    setSelectedVerseNumber(1)
-  }
+    });
+    setSelectedChapterNumber(chapterNumber);
+    setSelectedVerseNumber(1);
+  };
 
   const handleVerseSelect = (verseNumber: number) => {
     if (verseNumber === selectedVerseNumber) {
-      return
+      return;
     }
 
-    posthog?.capture('verse_selected', {
+    posthog?.capture("verse_selected", {
       chapter_number: selectedChapterNumber,
       verse_number: verseNumber,
       previous_verse_number: selectedVerseNumber,
-    })
+    });
 
     setTransitionState({
       direction: verseNumber > selectedVerseNumber ? 1 : -1,
       kind: "verse",
-    })
-    setSelectedVerseNumber(verseNumber)
-  }
+    });
+    setSelectedVerseNumber(verseNumber);
+  };
 
   const stepVerse = (delta: -1 | 1) => {
     const chapterIndex = chapters.findIndex(
       (chapter) => chapter.number === selectedChapterNumber,
-    )
+    );
 
     if (chapterIndex < 0) {
-      return
+      return;
     }
 
-    const currentChapter = chapters[chapterIndex]
+    const currentChapter = chapters[chapterIndex];
     const verseIndex = currentChapter.verses.findIndex(
       (verse) => verse.number === selectedVerseNumber,
-    )
+    );
 
     if (verseIndex < 0) {
-      return
+      return;
     }
 
-    const nextVerseIndex = verseIndex + delta
+    const nextVerseIndex = verseIndex + delta;
 
     if (nextVerseIndex >= 0 && nextVerseIndex < currentChapter.verses.length) {
-      posthog?.capture('verse_navigated', {
+      posthog?.capture("verse_navigated", {
         chapter_number: selectedChapterNumber,
         verse_number: currentChapter.verses[nextVerseIndex].number,
         previous_verse_number: selectedVerseNumber,
-        direction: delta > 0 ? 'forward' : 'backward',
+        direction: delta > 0 ? "forward" : "backward",
         cross_chapter: false,
-      })
-      handleVerseSelect(currentChapter.verses[nextVerseIndex].number)
-      return
+      });
+      handleVerseSelect(currentChapter.verses[nextVerseIndex].number);
+      return;
     }
 
-    const nextChapter = chapters[chapterIndex + delta]
+    const nextChapter = chapters[chapterIndex + delta];
 
     if (!nextChapter) {
-      return
+      return;
     }
 
     const nextVerseNumber =
       delta > 0
         ? nextChapter.verses[0].number
-        : nextChapter.verses[nextChapter.verses.length - 1]?.number ?? 1
+        : (nextChapter.verses[nextChapter.verses.length - 1]?.number ?? 1);
 
-    posthog?.capture('verse_navigated', {
+    posthog?.capture("verse_navigated", {
       chapter_number: nextChapter.number,
       verse_number: nextVerseNumber,
       previous_chapter_number: selectedChapterNumber,
       previous_verse_number: selectedVerseNumber,
-      direction: delta > 0 ? 'forward' : 'backward',
+      direction: delta > 0 ? "forward" : "backward",
       cross_chapter: true,
-    })
+    });
 
     setTransitionState({
       direction: delta,
       kind: "chapter",
-    })
-    setSelectedChapterNumber(nextChapter.number)
-    setSelectedVerseNumber(nextVerseNumber)
-  }
+    });
+    setSelectedChapterNumber(nextChapter.number);
+    setSelectedVerseNumber(nextVerseNumber);
+  };
 
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      !selectedChapter ||
-      !selectedVerse
-    ) {
-      return
+    if (typeof window === "undefined" || !selectedChapter || !selectedVerse) {
+      return;
     }
 
-    const url = new URL(window.location.href)
-    url.searchParams.set("chapter", selectedChapter.number.toString())
-    url.searchParams.set("verse", selectedVerse.number.toString())
-    window.history.replaceState(null, "", url)
-  }, [selectedChapter, selectedVerse])
+    const url = new URL(window.location.href);
+    url.searchParams.set("chapter", selectedChapter.number.toString());
+    url.searchParams.set("verse", selectedVerse.number.toString());
+    window.history.replaceState(null, "", url);
+  }, [selectedChapter, selectedVerse]);
 
   if (!selectedChapter || !selectedVerse) {
-    return null
+    return null;
   }
 
-  const chapterLabel = selectedChapter.number.toString().padStart(2, "0")
-  const verseLabel = selectedVerse.number.toString().padStart(2, "0")
-  const verseTitle = `Chapter ${chapterLabel} . Verse ${verseLabel}`
+  const chapterLabel = selectedChapter.number.toString().padStart(2, "0");
+  const verseLabel = selectedVerse.number.toString().padStart(2, "0");
+  const verseTitle = `Chapter ${chapterLabel} . Verse ${verseLabel}`;
   const verseUrl =
     typeof window === "undefined"
       ? ""
-      : `${window.location.origin}${window.location.pathname}?chapter=${selectedChapter.number}&verse=${selectedVerse.number}`
+      : `${window.location.origin}${window.location.pathname}?chapter=${selectedChapter.number}&verse=${selectedVerse.number}`;
   const llmsTxtUrl =
     typeof window === "undefined"
       ? ""
       : new URL(`${import.meta.env.BASE_URL}llms.txt`, window.location.origin)
-          .href
+          .href;
   const verseMarkdown = `# ${scripture.title} - ${verseTitle}
 
 ${selectedVerse.sanskrit}
@@ -274,155 +273,154 @@ ${selectedVerse.hindi}
 ## English
 ${selectedVerse.english}
 
-${verseUrl}`
+${verseUrl}`;
   const copyPage = async () => {
     if (copyState === "copying") {
-      return
+      return;
     }
 
-    setCopyState("copying")
+    setCopyState("copying");
 
     try {
-      await writeToClipboard(verseMarkdown)
-      setCopyState("copied")
-      posthog?.capture('verse_copied', {
+      await writeToClipboard(verseMarkdown);
+      setCopyState("copied");
+      posthog?.capture("verse_copied", {
         chapter_number: selectedChapter.number,
         verse_number: selectedVerse.number,
-      })
+      });
     } catch (err) {
-      setCopyState("error")
+      setCopyState("error");
       posthog?.captureException(err, {
         chapter_number: selectedChapter.number,
         verse_number: selectedVerse.number,
-      })
+      });
     }
 
     window.setTimeout(() => {
-      setCopyState("idle")
-    }, 1600)
-  }
+      setCopyState("idle");
+    }, 1600);
+  };
 
   const openInChatGPT = () => {
-    posthog?.capture('verse_opened_in_chatgpt', {
+    posthog?.capture("verse_opened_in_chatgpt", {
       chapter_number: selectedChapter.number,
       verse_number: selectedVerse.number,
-    })
-    const prompt = `Explain this Bhagavad Gita verse:\n\n${verseMarkdown}`
+    });
+    const prompt = `${verseMarkdown}\n\nExplain the above Bhagavad Gita verse.`;
     window.open(
       `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
       "_blank",
       "noopener,noreferrer",
-    )
-  }
+    );
+  };
 
   const openFullGeetaInChatGPT = () => {
-    posthog?.capture('full_geeta_opened_in_chatgpt', {
+    posthog?.capture("full_geeta_opened_in_chatgpt", {
       chapter_number: selectedChapter.number,
       verse_number: selectedVerse.number,
-    })
+    });
     const prompt = `I am reading the Bhagavad Gita. Use this llms.txt file as the full text/context for the Geeta: ${llmsTxtUrl}
 
-Help me understand the full Geeta, starting from the overall structure, key teachings, and how Chapter ${selectedChapter.number}, Verse ${selectedVerse.number} fits into the whole text.`
+Help me understand the full Geeta, starting from the overall structure and key teachings.`;
     window.open(
       `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
       "_blank",
       "noopener,noreferrer",
-    )
-  }
+    );
+  };
 
   const canScrollInDirection = (element: HTMLElement, deltaY: number) => {
     if (element.scrollHeight <= element.clientHeight + 1) {
-      return false
+      return false;
     }
 
     if (deltaY > 0) {
-      return element.scrollTop + element.clientHeight < element.scrollHeight - 1
+      return (
+        element.scrollTop + element.clientHeight < element.scrollHeight - 1
+      );
     }
 
-    return element.scrollTop > 1
-  }
+    return element.scrollTop > 1;
+  };
 
-  const handleReaderPanEnd = (
-    event: PointerEvent,
-    info: PanInfo,
-  ) => {
+  const handleReaderPanEnd = (event: PointerEvent, info: PanInfo) => {
     if (event.pointerType !== "touch") {
-      return
+      return;
     }
 
-    const horizontalTravel = info.offset.x
-    const verticalTravel = info.offset.y
+    const horizontalTravel = info.offset.x;
+    const verticalTravel = info.offset.y;
 
     if (
       Math.abs(horizontalTravel) < 48 ||
       Math.abs(horizontalTravel) <= Math.abs(verticalTravel)
     ) {
-      return
+      return;
     }
 
-    stepVerse(horizontalTravel < 0 ? 1 : -1)
-  }
+    stepVerse(horizontalTravel < 0 ? 1 : -1);
+  };
 
   const handleReaderWheel = (event: WheelEvent<HTMLElement>) => {
-    const target = event.target
-    const currentTarget = event.currentTarget
+    const target = event.target;
+    const currentTarget = event.currentTarget;
 
     if (
       target instanceof HTMLElement &&
       target.closest('[data-rail-selector="true"]')
     ) {
-      return
+      return;
     }
 
     if (target instanceof HTMLElement) {
-      let currentElement: HTMLElement | null = target
+      let currentElement: HTMLElement | null = target;
 
       while (currentElement && currentElement !== currentTarget) {
-        const overflowY = window.getComputedStyle(currentElement).overflowY
+        const overflowY = window.getComputedStyle(currentElement).overflowY;
 
         if (
           (overflowY === "auto" || overflowY === "scroll") &&
           canScrollInDirection(currentElement, event.deltaY)
         ) {
-          return
+          return;
         }
 
-        currentElement = currentElement.parentElement
+        currentElement = currentElement.parentElement;
       }
     }
 
-    const scrollingElement = document.scrollingElement
+    const scrollingElement = document.scrollingElement;
 
     if (
       scrollingElement instanceof HTMLElement &&
       canScrollInDirection(scrollingElement, event.deltaY)
     ) {
-      return
+      return;
     }
 
     if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
-      return
+      return;
     }
 
     if (Math.abs(event.deltaY) < 36) {
-      return
+      return;
     }
 
-    const now = Date.now()
+    const now = Date.now();
     if (now - lastWheelStepAtRef.current < 420) {
-      return
+      return;
     }
 
-    event.preventDefault()
-    lastWheelStepAtRef.current = now
-    stepVerse(event.deltaY > 0 ? 1 : -1)
-  }
+    event.preventDefault();
+    lastWheelStepAtRef.current = now;
+    stepVerse(event.deltaY > 0 ? 1 : -1);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <section
         onWheel={handleReaderWheel}
-        className="relative h-[100dvh] overflow-hidden"
+        className="relative min-h-dvh overflow-hidden"
       >
         <div aria-hidden="true" className="scripture-scene absolute inset-0">
           <div className="scripture-scene__image" />
@@ -431,7 +429,7 @@ Help me understand the full Geeta, starting from the overall structure, key teac
           <div className="scripture-scene__grain" />
         </div>
 
-        <main className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-start justify-center overflow-y-auto overflow-x-hidden px-0 pt-[18dvh] pb-[calc(13rem+env(safe-area-inset-bottom))] sm:px-32 sm:pt-[16vh] sm:pb-[calc(12rem+env(safe-area-inset-bottom))] lg:px-40">
+        <main className="relative z-10 mx-auto flex min-h-dvh w-full max-w-7xl items-start justify-center px-0 pt-[18dvh] pb-[calc(13rem+env(safe-area-inset-bottom))] sm:px-32 sm:pt-[16vh] sm:pb-[calc(12rem+env(safe-area-inset-bottom))] lg:px-40">
           <motion.section
             onPanEnd={handleReaderPanEnd}
             style={{ touchAction: "pan-y" }}
@@ -588,7 +586,7 @@ Help me understand the full Geeta, starting from the overall structure, key teac
               <button
                 type="button"
                 onClick={() => {
-                  setMobileRailMode("verse")
+                  setMobileRailMode("verse");
                 }}
                 className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
                   mobileRailMode === "verse"
@@ -612,7 +610,7 @@ Help me understand the full Geeta, starting from the overall structure, key teac
               <button
                 type="button"
                 onClick={() => {
-                  setMobileRailMode("chapter")
+                  setMobileRailMode("chapter");
                 }}
                 className={`relative rounded-lg px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] transition-colors ${
                   mobileRailMode === "chapter"
@@ -689,7 +687,7 @@ Help me understand the full Geeta, starting from the overall structure, key teac
         </div>
       </footer>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
