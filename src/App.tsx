@@ -259,6 +259,11 @@ function App() {
     typeof window === "undefined"
       ? ""
       : `${window.location.origin}${window.location.pathname}?chapter=${selectedChapter.number}&verse=${selectedVerse.number}`
+  const llmsTxtUrl =
+    typeof window === "undefined"
+      ? ""
+      : new URL(`${import.meta.env.BASE_URL}llms.txt`, window.location.origin)
+          .href
   const verseMarkdown = `# ${scripture.title} - ${verseTitle}
 
 ${selectedVerse.sanskrit}
@@ -315,7 +320,9 @@ ${verseUrl}`
       chapter_number: selectedChapter.number,
       verse_number: selectedVerse.number,
     })
-    const prompt = `I am reading the Bhagavad Gita. Help me understand the full Geeta, starting from the overall structure, key teachings, and how Chapter ${selectedChapter.number}, Verse ${selectedVerse.number} fits into the whole text.`
+    const prompt = `I am reading the Bhagavad Gita. Use this llms.txt file as the full text/context for the Geeta: ${llmsTxtUrl}
+
+Help me understand the full Geeta, starting from the overall structure, key teachings, and how Chapter ${selectedChapter.number}, Verse ${selectedVerse.number} fits into the whole text.`
     window.open(
       `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`,
       "_blank",
